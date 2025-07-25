@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📺 YouTube URL抽出システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #ff0000, #cc0000);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: #666;
+        }
+
+        .search-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #ff0000;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .form-group {
+            flex: 1;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #ff0000;
+            box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff0000, #cc0000);
+            color: white;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ff0000;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .results-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .results-count {
+            background: #ff0000;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .video-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .video-card:hover {
+            border-color: #ff0000;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(255, 0, 0, 0.1);
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 200px;
+            background: #ddd;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .video-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        .play-button {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 0, 0, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .play-button:hover {
+            background: rgba(255, 0, 0, 1);
+            transform: scale(1.1);
+        }
+
+        .video-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .video-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .channel-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .channel-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #ff0000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .channel-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .video-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .video-url {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            word-break: break-all;
+            border: 1px solid #dee2e6;
+        }
+
+        .copy-btn {
+            margin-top: 5px;
+            padding: 5px 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: #218838;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+            display: none;
+        }
+
+        .export-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            display: none;
+        }
+
+        .export-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .search-form {
+                flex-direction: column;
+            }
+
+            .video-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .video-stats {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📺 YouTube URL抽出システム</h1>
+            <p>キーワードからYouTube動画を検索してURL一覧を取得</p>
+        </div>
+
+        <!-- 検索セクション -->
+        <div class="search-section">
+            <form class="search-form" id="searchForm">
+                <div class="form-group">
+                    <label for="keyword">検索キーワード</label>
+                    <input type="text" id="keyword" class="form-control" placeholder="例: プログラミング, 料理, 音楽..." required>
+                </div>
+                <div class="form-group">
+                    <label for="maxResults">取得件数</label>
+                    <select id="maxResults" class="form-control">
+                        <option value="10">10件</option>
+                        <option value="20" selected>20件</option>
+                        <option value="50">50件</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">🔍 検索実行</button>
+            </form>
+        </div>
+
+        <!-- ローディング -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <p>YouTube動画を検索中...</p>
+        </div>
+
+        <!-- エラーメッセージ -->
+        <div class="error-message" id="errorMessage"></div>
+
+        <!-- 結果セクション -->
+        <div class="results-section" id="resultsSection">
+            <div class="results-header">
+                <h3 class="results-title">検索結果</h3>
+                <span class="results-count" id="resultsCount">0件</span>
+            </div>
+            <div class="video-grid" id="videoGrid"></div>
+        </div>
+
+        <!-- エクスポートセクション -->
+        <div class="export-section" id="exportSection">
+            <h4>データエクスポート</h4>
+            <button class="export-btn" onclick="exportToCSV()">📄 CSV形式でダウンロード</button>
+            <button class="export-btn" onclick="exportToJSON()">📋 JSON形式でダウンロード</button>
+            <button class="export-btn" onclick="copyAllUrls()">🔗 URL一覧をコピー</button>
+        </div>
+    </div>
+
+    <script>
+        class YouTubeExtractor {
+            constructor() {
+                this.currentResults = [];
+                this.initializeApp();
+                this.setupEventListeners();
+            }
+
+            initializeApp() {
+                console.log('📺 YouTube URL抽出システム v1.0 初期化完了');
+                
+                // サンプルデータ表示用のデモ実行
+                setTimeout(() => {
+                    if (this.currentResults.length === 0) {
+                        this.showWelcomeMessage();
+                    }
+                }, 1000);
+            }
+
+            setupEventListeners() {
+                document.getElementById('searchForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.performSearch();
+                });
+            }
+
+            showWelcomeMessage() {
+                const resultsSection = document.getElementById('resultsSection');
+                const videoGrid = document.getElementById('videoGrid');
+                
+                videoGrid.innerHTML = `
+                    <div class="empty-state">
+                        <h3>📺 YouTube動画検索システム</h3>
+                        <p>キーワードを入力して動画を検索してください</p>
+                        <p>例: プログラミング、料理、音楽、ゲーム実況など</p>
+                    </div>
+                `;
+                
+                resultsSection.style.display = 'block';
+                document.getElementById('resultsCount').textContent = '待機中';
+            }
+
+            async performSearch() {
+                const keyword = document.getElementById('keyword').value.trim();
+                const maxResults = parseInt(document.getElementById('maxResults').value);
+
+                if (!keyword) {
+                    this.showError('検索キーワードを入力してください。');
+                    return;
+                }
+
+                this.showLoading(true);
+                this.hideError();
+
+                try {
+                    // 実際のYouTube API呼び出しのシミュレーション
+                    const results = await this.simulateYouTubeSearch(keyword, maxResults);
+                    this.currentResults = results;
+                    this.displayResults(results);
+                    this.showExportOptions(results.length > 0);
+                } catch (error) {
+                    console.error('検索エラー:', error);
+                    this.showError('検索中にエラーが発生しました。もう一度お試しください。');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            async simulateYouTubeSearch(keyword, maxResults) {
+                // 実際の実装では YouTube Data API を使用
+                await this.delay(2000); // API呼び出しのシミュレート
+
+                const sampleVideos = this.generateSampleVideos(keyword, maxResults);
+                return sampleVideos;
+            }
+
+            generateSampleVideos(keyword, count) {
+                const sampleChannels = [
+                    { name: 'プログラミング学習チャンネル', subscribers: '15.2万' },
+                    { name: 'テクノロジー解説', subscribers: '8.7万' },
+                    { name: 'コード実践塾', subscribers: '23.4万' },
+                    { name: 'IT情報局', subscribers: '12.1万' },
+                    { name: 'エンジニアの日常', subscribers: '6.9万' }
+                ];
+
+                const sampleTitles = [
+                    `${keyword}入門 - 初心者向け完全ガイド`,
+                    `${keyword}の基本を徹底解説！`,
+                    `プロが教える${keyword}のコツ`,
+                    `${keyword}で作る実践的なプロジェクト`,
+                    `${keyword}の最新トレンド2025`,
+                    `${keyword}エラー解決方法まとめ`,
+                    `${keyword}パフォーマンス最適化術`,
+                    `${keyword}ベストプラクティス集`
+                ];
+
+                const videos = [];
+                for (let i = 0; i < count; i++) {
+                    const channel = sampleChannels[i % sampleChannels.length];
+                    const title = sampleTitles[i % sampleTitles.length];
+                    const videoId = this.generateVideoId();
+                    
+                    videos.push({
+                        id: videoId,
+                        title: title,
+                        url: `https://www.youtube.com/watch?v=${videoId}`,
+                        thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+                        channel: {
+                            name: channel.name,
+                            subscribers: channel.subscribers
+                        },
+                        publishedAt: this.generateRandomDate(),
+                        viewCount: this.generateRandomViews(),
+                        duration: this.generateRandomDuration()
+                    });
+                }
+
+                return videos;
+            }
+
+            generateVideoId() {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+                let result = '';
+                for (let i = 0; i < 11; i++) {
+                    result += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return result;
+            }
+
+            generateRandomDate() {
+                const now = new Date();
+                const daysAgo = Math.floor(Math.random() * 365);
+                const date = new Date(now.getTime() - (daysAgo * 24 * 60 * 60 * 1000));
+                return date.toISOString().split('T')[0];
+            }
+
+            generateRandomViews() {
+                const views = Math.floor(Math.random() * 1000000) + 1000;
+                return views.toLocaleString('ja-JP');
+            }
+
+            generateRandomDuration() {
+                const minutes = Math.floor(Math.random() * 20) + 5;
+                const seconds = Math.floor(Math.random() * 59);
+                return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            displayResults(videos) {
+                const resultsSection = document.getElementById('resultsSection');
+                const videoGrid = document.getElementById('videoGrid');
+                const resultsCount = document.getElementById('resultsCount');
+
+                if (videos.length === 0) {
+                    videoGrid.innerHTML = `
+                        <div class="empty-state">
+                            <h3>検索結果が見つかりませんでした</h3>
+                            <p>別のキーワードで検索してみてください</p>
+                        </div>
+                    `;
+                    resultsCount.textContent = '0件';
+                } else {
+                    videoGrid.innerHTML = videos.map(video => this.createVideoCard(video)).join('');
+                    resultsCount.textContent = `${videos.length}件`;
+                }
+
+                resultsSection.style.display = 'block';
+            }
+
+            createVideoCard(video) {
+                const publishDate = new Date(video.publishedAt).toLocaleDateString('ja-JP');
+                
+                return `
+                    <div class="video-card" onclick="window.open('${video.url}', '_blank')">
+                        <div class="video-thumbnail">
+                            <img src="https://via.placeholder.com/320x180/ff0000/ffffff?text=YouTube" alt="動画サムネイル" onerror="this.style.display='none'">
+                            <div class="play-button">▶</div>
+                        </div>
+                        
+                        <h4 class="video-title">${video.title}</h4>
+                        
+                        <div class="channel-info">
+                            <div class="channel-avatar">${video.channel.name.charAt(0)}</div>
+                            <div>
+                                <div class="channel-name">${video.channel.name}</div>
+                                <div style="font-size: 0.8rem; color: #666;">登録者数: ${video.channel.subscribers}人</div>
+                            </div>
+                        </div>
+                        
+                        <div class="video-stats">
+                            <div class="stat-item">
+                                <span>👁️</span>
+                                <span>${video.viewCount}回視聴</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>📅</span>
+                                <span>${publishDate}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>⏱️</span>
+                                <span>${video.duration}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="video-url">
+                            ${video.url}
+                            <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('${video.url}')">
+                                📋 コピー
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            showLoading(show) {
+                const spinner = document.getElementById('loadingSpinner');
+                const resultsSection = document.getElementById('resultsSection');
+                
+                if (show) {
+                    spinner.style.display = 'block';
+                    resultsSection.style.display = 'none';
+                } else {
+                    spinner.style.display = 'none';
+                }
+            }
+
+            showError(message) {
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+
+            hideError() {
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.style.display = 'none';
+            }
+
+            showExportOptions(show) {
+                const exportSection = document.getElementById('exportSection');
+                exportSection.style.display = show ? 'block' : 'none';
+            }
+
+            exportToCSV() {
+                if (this.currentResults.length === 0) {
+                    alert('エクスポートするデータがありません。');
+                    return;
+                }
+
+                const headers = ['タイトル', 'チャンネル名', '登録者数', '視聴回数', '投稿日', '動画時間', 'URL'];
+                const csvContent = [
+                    headers.join(','),
+                    ...this.currentResults.map(video => [
+                        `"${video.title}"`,
+                        `"${video.channel.name}"`,
+                        `"${video.channel.subscribers}"`,
+                        `"${video.viewCount}"`,
+                        video.publishedAt,
+                        video.duration,
+                        video.url
+                    ].join(','))
+                ].join('\n');
+
+                this.downloadFile(csvContent, 'youtube-videos.csv', 'text/csv');
+            }
+
+            exportToJSON() {
+                if (this.currentResults.length === 0) {
+                    alert('エクスポートするデータがありません。');
+                    return;
+                }
+
+                const jsonContent = JSON.stringify({
+                    exportDate: new Date().toISOString(),
+                    totalVideos: this.currentResults.length,
+                    videos: this.currentResults
+                }, null, 2);
+
+                this.downloadFile(jsonContent, 'youtube-videos.json', 'application/json');
+            }
+
+            copyAllUrls() {
+                if (this.currentResults.length === 0) {
+                    alert('コピーするURLがありません。');
+                    return;
+                }
+
+                const urls = this.currentResults.map(video => video.url).join('\n');
+                this.copyToClipboard(urls);
+                alert(`${this.currentResults.length}件のURLをクリップボードにコピーしました。`);
+            }
+
+            downloadFile(content, filename, mimeType) {
+                const blob = new Blob(['\uFEFF' + content], { type: mimeType + ';charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.click();
+            }
+
+            copyToClipboard(text) {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text);
+                } else {
+                    // フォールバック
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                }
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // グローバル関数
+        let youtubeExtractor;
+
+        function copyToClipboard(text) {
+            youtubeExtractor.copyToClipboard(text);
+            
+            // コピー成功のフィードバック
+            const event = window.event;
+            if (event && event.target) {
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = '✅ コピー済み';
+                button.style.background = '#28a745';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '#28a745';
+                }, 2000);
+            }
+        }
+
+        function exportToCSV() {
+            youtubeExtractor.exportToCSV();
+        }
+
+        function exportToJSON() {
+            youtubeExtractor.exportToJSON();
+        }
+
+        function copyAllUrls() {
+            youtubeExtractor.copyAllUrls();
+        }
+
+        // アプリケーション初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            youtubeExtractor = new YouTubeExtractor();
+        });
+
+        // アプリケーション情報をコンソールに出力
+        console.log('📺 YouTube URL抽出システム v1.0');
+        console.log('作成日: 2025-07-26');
+        console.log('機能: YouTube動画検索、URL抽出、データエクスポート');
+        console.log('注意: 実際のYouTube APIは使用せず、シミュレーションデータを表示');
+    </script>
+</body>
+</html>
